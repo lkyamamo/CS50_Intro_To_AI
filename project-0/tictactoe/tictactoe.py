@@ -3,6 +3,7 @@ Tic Tac Toe Player
 """
 
 import math
+import copy
 
 X = "X"
 O = "O"
@@ -66,9 +67,7 @@ def result(board, action):
     if board[action[0]][action[1]] != EMPTY:
         raise NameError("Invalid Action")
     
-    newBoard = []
-    for row in board:
-        newBoard.append(row)
+    newBoard = copy.deepcopy(board)
 
     newBoard[action[0]][action[1]] = player(board)
 
@@ -84,9 +83,9 @@ def winner(board):
 
     #horizontal
     for row in board:
-        if set(row) == "X":
+        if row[0] == row[1] == row[2] == "X":
             return "X"
-        if set(row) == "O":
+        if row[0] == row[1] == row[2] == "O":
             return "O"
 
     #vertical
@@ -113,6 +112,9 @@ def terminal(board):
     """
     Returns True if game is over, False otherwise.
     """
+
+    if winner(board) != None:
+        return True
 
     for row in board:
         if EMPTY in set(row):
@@ -144,6 +146,9 @@ def minimax(board):
     """
     Returns the optimal action for the current player on the board.
     """
+
+    if terminal(board):
+        return None
     
     turn = player(board)
 
@@ -151,15 +156,33 @@ def minimax(board):
     if(turn == "X"):
         choice = (-2, None)
         for action in possibleActions:
-            if not terminal(result(action)):
-                return minimax(board)
-            else:
-                value = utility(result(action))
-                if value > choice[0]:
-                    choice = (value, action)
-    
+            current = (assignUtility(result(board, action)), action)
+            if current[0] > choice[0]:
+                choice = current
+        return choice[1]
+    else:
+        choice = (2, None)
+        for action in possibleActions:
+            current = (assignUtility(result(board, action)), action)
+            if current[0] < choice[0]:
+                choice = current
+        return choice[1]
 
-
+def assignUtility(board):
     
+    if terminal(board):
+        return utility(board)
+    
+    if(player(board) == "X"):
+        choice = -2
+        for action in actions(board):
+            choice = max(choice, assignUtility(result(board, action)))
+
+    else:
+        choice = 2
+        for action in actions(board):
+            choice = min(choice, assignUtility(result(board, action)))
+
+    return choice
 
     raise NotImplementedError
