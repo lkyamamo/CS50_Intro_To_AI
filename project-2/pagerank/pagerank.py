@@ -102,12 +102,12 @@ def sample_pagerank(corpus, damping_factor, n):
     for item in corpus.items():
         output[item[0]] = 0
 
-    current = random.choice(corpus.keys())
+    current = random.choice(list(corpus.keys()))
     output[current] += 1
     i = 1
     while i < n:
         choices = transition_model(corpus, current, damping_factor)
-        current = random.choices(choices.keys(), choices.values(), 1)
+        current = random.choices(list(choices.keys()), tuple(choices.values()))[0]
         output[current] += 1
         i += 1
     
@@ -128,6 +128,43 @@ def iterate_pagerank(corpus, damping_factor):
     their estimated PageRank value (a value between 0 and 1). All
     PageRank values should sum to 1.
     """
+
+    pagerank = dict()
+    total_items = len(corpus)
+    for item in corpus.items():
+        pagerank[item[0]] = 1/total_items
+    
+    check = False
+    while(not check):
+        #get last before doing edits
+        last = pagerank.copy()
+
+        #calculate for all pages
+        for page in pagerank.keys():
+
+            new_value = damping_factor / total_items
+
+            #find all pages that link to this one and calculate
+            for item in corpus.items():
+                if page in item[1]:
+                    new_value += damping_factor * pagerank[item[0]] / len(item[1])
+            
+            pagerank[page] = new_value
+
+        #check for threshold
+        for item in pagerank.items():
+            if item[1] - last[item[0]] <= 0.01:
+                check = True
+            else:
+                check = False
+                continue
+    
+    total = sum(pagerank.values())
+    for key in pagerank.keys():
+        pagerank[key] /= total
+
+    return pagerank
+
     raise NotImplementedError
 
 
