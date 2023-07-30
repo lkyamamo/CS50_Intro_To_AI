@@ -139,6 +139,64 @@ def joint_probability(people, one_gene, two_genes, have_trait):
         * everyone in set `have_trait` has the trait, and
         * everyone not in set` have_trait` does not have the trait.
     """
+
+    final_probability = 1
+
+    person_gene_count = dict()
+    probability_pass = [PROBS["mutation"], 0.5, 1 - PROBS["mutation"]]
+
+    #classify gene counts
+    for person in people:
+        if person in one_gene:
+            person_gene_count[person] = 1
+        elif person in two_genes:
+            person_gene_count[person] = 2
+        else:
+            person_gene_count[person] = 0
+    
+    #gene probability calculation
+    for person in people:
+        probability = 0
+        genes = -1
+        #0 genes
+        if person_gene_count[person] == 0:
+            genes = 0
+            #go off PROBS
+            if people[person]["mother"] == None:
+                probability = PROBS["gene"][0]
+            else:
+                #calculates probability of mother and father not passing there genes
+                probability = (1 - probability_pass[person_gene_count[people[person]["mother"]]]) * (1 - probability_pass[person_gene_count[people[person]["father"]]])
+        
+        #1 gene
+        elif person_gene_count[person] == 1:
+            genes = 1
+            if people[person]["mother"] == None:
+                probability = PROBS["gene"][1]
+            else:
+                #calculates probability of mother not passing and father passing plus probability of mother passing and father not passing there genes
+                probability = (1 - probability_pass[person_gene_count[people[person]["mother"]]]) * (probability_pass[person_gene_count[people[person]["father"]]]) + (probability_pass[person_gene_count[people[person]["mother"]]]) * (1 - probability_pass[person_gene_count[people[person]["father"]]])
+        
+        #2 genes
+        else:
+            genes = 2
+            #go off PROBS
+            if people[person]["mother"] == None:
+                probability = PROBS["gene"][2]
+            else:
+                #calculates probability of mother and father not passing there genes
+                probability = (probability_pass[person_gene_count[people[person]["mother"]]]) * (probability_pass[person_gene_count[people[person]["father"]]])
+        
+        if person in have_trait:
+            probability *= PROBS["trait"][genes][True]
+        else:
+            probability *= PROBS["trait"][genes][False]
+
+        final_probability *= probability
+    
+    return final_probability
+
+    #calculate does not have trait
     raise NotImplementedError
 
 
@@ -149,7 +207,22 @@ def update(probabilities, one_gene, two_genes, have_trait, p):
     Which value for each distribution is updated depends on whether
     the person is in `have_gene` and `have_trait`, respectively.
     """
-    raise NotImplementedError
+
+    for person in probabilities.keys():
+        current = probabilities[person]
+        if person in one_gene:
+            current["gene"][1] += p
+        elif person in two_genes:
+            current["gene"][2] += p
+        else:
+            current["gene"][0] += p
+
+        if person in have_trait:
+            current["trait"][True] += p
+        else:
+            current["trait"][False] += p
+
+    #raise NotImplementedError
 
 
 def normalize(probabilities):
@@ -157,7 +230,24 @@ def normalize(probabilities):
     Update `probabilities` such that each probability distribution
     is normalized (i.e., sums to 1, with relative proportions the same).
     """
-    raise NotImplementedError
+    for person in probabilities.keys():
+        #normalize genes
+        current = probabilities[person]["gene"]
+        total = 0
+        for value in current.values():
+            total += value
+        for key in current.keys():
+            current[key] /= total
+
+        #normalize traits
+        current = probabilities[person]["trait"]
+        total = 0
+        for value in current.values():
+            total += value
+        for key in current.keys():
+            current[key] /= total
+
+    #raise NotImplementedError
 
 
 if __name__ == "__main__":
