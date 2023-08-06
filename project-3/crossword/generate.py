@@ -101,13 +101,18 @@ class CrosswordCreator():
          constraints; in this case, the length of the word.)
         """
 
+
+
         # for all variables
         for variable in self.crossword.variables:
+            not_satisfied = set()
             # for all words in the variable's domain
             for word in self.domains[variable]:
                 # if the word does not have the correct length remove it from domain
-                if len(word) != self.crossword.variable.length:
-                    self.domains[variable].remove(word)
+                if len(word) != variable.length:
+                    not_satisfied.add(word)
+
+            self.domains[variable] = self.domains[variable].difference(not_satisfied)
 
         #raise NotImplementedError
 
@@ -129,7 +134,8 @@ class CrosswordCreator():
         
         modified = False
         # for all word in x domain
-        for x_word in self.domains[x]:
+        x_domain_copy = self.domains[x].copy()
+        for x_word in x_domain_copy:
 
             # starts without knowing if the word has another it overlaps with
             test = False
@@ -184,7 +190,8 @@ class CrosswordCreator():
                 # add all neighbors of modified domain
                 else:
                     for neighbor in self.crossword.neighbors(current[0]):
-                        arc_queue.put((neighbor, current[0]))
+                        if neighbor != current[1]:
+                            arc_queue.put((neighbor, current[0]))
                 
         return True
     
@@ -196,11 +203,10 @@ class CrosswordCreator():
         crossword variable); return False otherwise.
         """
 
-        for key in assignment.keys():
-            if assignment[key] == None:
-                return False
+        if len(self.crossword.variables) == len(assignment):
+            return True
             
-        return True
+        return False
 
         raise NotImplementedError
 
@@ -211,7 +217,7 @@ class CrosswordCreator():
         """
 
         # check for distinctness
-        if len(set(assignment.values)) != len(assignment.values):
+        if len(set(assignment.values())) != len(assignment.values()):
             return False
 
         # check for length
@@ -222,11 +228,11 @@ class CrosswordCreator():
         # check for correct overlaps
         for variable in assignment.keys():
             for neighbor in self.crossword.neighbors(variable):
-                
-                # check if the overlap indices match
-                indices = self.crossword.overlaps((variable, neighbor))
-                if variable[indices[0]] != neighbor[indices[1]]:
-                    return False
+                if neighbor in assignment.keys():
+                    # check if the overlap indices match
+                    indices = self.crossword.overlaps[(variable, neighbor)]
+                    if assignment[variable][indices[0]] != assignment[neighbor][indices[1]]:
+                        return False
 
         return True
 
@@ -239,8 +245,7 @@ class CrosswordCreator():
         The first value in the list, for example, should be the one
         that rules out the fewest values among the neighbors of `var`.
         """
-        output = ["start"]
-        sizes = [-1]
+        choice = dict()
 
         for word in self.domains[var]:
             if word not in assignment.values():
@@ -248,21 +253,20 @@ class CrosswordCreator():
                 count = 0
                 for neighbor in self.crossword.neighbors(var):
                     # find where var overlaps with neighbor
-                    indices = self.crossword.overlaps((var, neighbor))
+                    indices = self.crossword.overlaps[(var, neighbor)]
                     
                     # loop over domain of the neighbor
                     for value in self.domains[neighbor]:
                         # if binary constraint not satisfied, add one to count
+                        
                         if word[indices[0]] != value[indices[1]]:
                             count += 1
                 
                 # find where to insert the word in list
-                for i in range(len(output)):
-                    if count < sizes[i]:
-                        output.insert(i, word)
-                        sizes.insert(i, count)
+                choice[word] = count
+                        
 
-        output.pop(-1)
+        output = sorted(choice, key= lambda x: choice[x])
         
         return output
 
@@ -277,6 +281,18 @@ class CrosswordCreator():
         degree. If there is a tie, any of the tied variables are acceptable
         return values.
         """
+
+        # get all not assigned
+        non_assigned = dict()
+        for variable in self.crossword.variables:
+            if variable not in assignment.keys():
+                non_assigned[variable] = (len(self.domains[variable]), len(self.crossword.neighbors(variable)))
+
+        # sort according to domain size from smallest to largest
+        output = sorted(non_assigned, key=lambda x: (non_assigned[x][0], non_assigned[x][1]))
+
+        return output[0]
+
         raise NotImplementedError
 
     def backtrack(self, assignment):
@@ -288,6 +304,35 @@ class CrosswordCreator():
 
         If no assignment is possible, return None.
         """
+
+        # check to see if a full assignment and return true or false
+        if self.assignment_complete(assignment):
+
+            if self.consistent(assignment) == True:
+
+                return assignment
+            
+            else:
+
+                return None
+
+        # choose the next variable to manipulate
+        choice = self.select_unassigned_variable(assignment)
+
+        # loop through list of possible values for the choice and backtrace those assignments
+        for value in self.order_domain_values(choice, assignment):
+            assignment[choice] = value
+            # return true if found a valid assignment with this choice and value
+            if self.consistent(assignment):
+                current = self.backtrack(assignment)
+                if current != None:
+                    return current
+                
+            assignment.pop(choice)
+            
+        # found no valid solution
+        return None
+
         raise NotImplementedError
 
 
