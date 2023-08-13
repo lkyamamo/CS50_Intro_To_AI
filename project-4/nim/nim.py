@@ -101,6 +101,16 @@ class NimAI():
         Return the Q-value for the state `state` and the action `action`.
         If no Q-value exists yet in `self.q`, return 0.
         """
+
+        tuple_state = tuple(state)
+
+        q_value = self.q.get((tuple_state, action))
+
+        if q_value == None:
+            return 0
+        else:
+            return q_value
+
         raise NotImplementedError
 
     def update_q_value(self, state, action, old_q, reward, future_rewards):
@@ -118,7 +128,12 @@ class NimAI():
         `alpha` is the learning rate, and `new value estimate`
         is the sum of the current reward and estimated future rewards.
         """
-        raise NotImplementedError
+
+        new_q = old_q + self.alpha * (reward + future_rewards - old_q)
+
+        self.q[(tuple(state), action)] = new_q
+
+        #raise NotImplementedError
 
     def best_future_reward(self, state):
         """
@@ -130,6 +145,21 @@ class NimAI():
         Q-value in `self.q`. If there are no available actions in
         `state`, return 0.
         """
+
+        actions = Nim.available_actions(state)
+
+        if not actions:
+            return 0
+
+        best = -2
+
+        for action in actions:
+            value = self.get_q_value(state, action)
+            if value > best:
+                best = value
+
+        return best
+
         raise NotImplementedError
 
     def choose_action(self, state, epsilon=True):
@@ -147,6 +177,24 @@ class NimAI():
         If multiple actions have the same Q-value, any of those
         options is an acceptable return value.
         """
+
+        if epsilon:
+            choice = random.choices(['random', 'optimal'], weights=(self.epsilon, 1-self.epsilon))
+
+            #if epsilon true and chose random return
+            if choice == 'random':
+                return Nim.available_actions(state).pop()
+
+        # not epsilon or chose optimal
+        best = (None, -2)
+        for action in Nim.available_actions(state):
+            current_q = self.get_q_value(state,action)
+            if current_q > best[1]:
+                best = (action, current_q)
+        
+        return best[0]
+
+
         raise NotImplementedError
 
 
